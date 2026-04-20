@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🛰️ Sentinel Watch — AI Satellite Change Detection System
 
 <div align="center">
