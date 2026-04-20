@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orbital.AI — Real-time satellite change detection from NASA & ESA</title>
+<meta name="description" content="Orbital.AI fuses Landsat, Sentinel and MODIS imagery into AI-powered change-detection telemetry. Detect deforestation, wildfires and urban growth in seconds via FastAPI." />
+<meta name="theme-color" content="#06141c" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<canvas id="starfield" aria-hidden="true"></canvas>
+<div class="bg-aurora" aria-hidden="true"></div>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(35 12 12)"/></svg>
+      </div>
+      <span class="brand-text">ORBITAL<span class="text-primary">.AI</span></span>
+      <span class="brand-sub">v2.4 · MISSION CONTROL</span>
+    </a>
+    <div class="nav-links">
+      <a href="#scan">Scan</a>
+      <a href="#detect">Detect</a>
+      <a href="#sources">Sources</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#missions">Missions</a>
+      <a href="#api">API</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a href="#cta" class="btn btn-outline btn-sm">Launch <span aria-hidden="true">→</span></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container hero-inner">
+    <div class="hero-content">
+      <div class="badge">
+        <span class="dot dot-signal" aria-hidden="true"></span>
+        <span class="text-signal">SYSTEM ONLINE</span>
+        <span class="bar" aria-hidden="true"></span>
+        <span class="text-muted">NASA · ESA · COPERNICUS</span>
+      </div>
+
+      <h1 class="hero-title">
+        See the planet
+        <span class="serif italic grad-text shimmer">change</span>
+        <br />
+        in <span class="serif italic">real time</span>.
+      </h1>
+
+      <p class="hero-desc">
+        Orbital.AI is a high-throughput change-detection platform fusing
+        <em>Landsat&nbsp;9</em>, <em>Sentinel-2</em> and <em>MODIS</em> imagery
+        into actionable telemetry — surfacing deforestation, wildfire spread,
+        urban sprawl and ice retreat the moment a new tile lands.
+      </p>
+
+      <div class="hero-cta">
+        <a href="#scan" class="btn btn-primary"><span aria-hidden="true">▶</span> Initiate scan</a>
+        <a href="#api" class="btn btn-outline"><span aria-hidden="true">⌥</span> View source</a>
+      </div>
+
+      <div class="trust">
+        <span>Trusted telemetry partners</span>
+        <ul>
+          <li>NASA EOSDIS</li>
+          <li>ESA Copernicus</li>
+          <li>USGS Landsat</li>
+          <li>Planet Labs</li>
+        </ul>
+      </div>
+
+      <div class="telemetry">
+        <div class="tile">
+          <div class="tile-label">AOIs MONITORED</div>
+          <div class="tile-value">12,847</div>
+          <div class="tile-trend text-signal">▲ 4.2% wk</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Δ DETECTIONS / DAY</div>
+          <div class="tile-value">3.2<span class="tile-suffix">M</span></div>
+          <div class="tile-trend text-signal">▲ 11.0% wk</div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">MODEL PRECISION</div>
+          <div class="tile-value">97.4<span class="tile-suffix">%</span></div>
+          <div class="tile-trend text-muted">F1 · v2.4</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="orbit" aria-hidden="true">
+      <div class="earth"></div>
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+      <div class="sat-orbit s1"><span class="sat"></span></div>
+      <div class="sat-orbit s2"><span class="sat sat-sm"></span></div>
+      <div class="sat-orbit s3"><span class="sat sat-xs"></span></div>
+    </div>
+  </div>
+
+  <div class="hud" aria-hidden="true">
+    <div><span class="dot dot-accent"></span> 34.0522° N</div>
+    <div>118.2437° W</div>
+    <div class="text-primary">ALT 705 km</div>
+    <div class="text-muted">SCENE 23-A · LC09_L1TP</div>
+  </div>
+
+  <a href="#detect" class="scroll-cue" aria-label="Scroll to engage">
+    <span>SCROLL TO ENGAGE</span>
+    <div class="scroll-line"></div>
+  </a>
+</header>
+
+<!-- LIVE SCAN -->
+<section id="scan" class="section section-band">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">00 / SCAN</div>
+      <div class="sec-label">LIVE DETECTION ENGINE</div>
+      <h2 class="sec-title">Run a <span class="serif italic">real-time scan</span>.</h2>
+      <p class="sec-desc">Define your area of interest and temporal window. The FastAPI backend fetches imagery from NASA &amp; ESA, computes spectral deltas, classifies change type and returns an AI field report.</p>
+    </div>
+
+    <div class="scan-wrap">
+
+      <!-- Parameters -->
+      <div class="scan-panel">
+        <div class="scan-panel-head">
+          <span class="dot dot-signal"></span>
+          MISSION PARAMETERS
+          <span class="scan-api-pill" id="scanApiStatus">checking…</span>
+        </div>
+        <div class="scan-body">
+
+          <div class="scan-field">
+            <label class="scan-label">PRESET AOI</label>
+            <select class="scan-select" id="scanPreset">
+              <option value="">— Custom coordinates —</option>
+              <option value="-62,-10,-58,-7">Amazon · Pará — deforestation</option>
+              <option value="55.1,25,55.5,25.4">Dubai — urban expansion</option>
+              <option value="-121.5,38.5,-120.5,39.5">California — wildfire</option>
+              <option value="58,43.5,61,45.5">Aral Sea — water loss</option>
+              <option value="-50,67,-45,69">Greenland — glacial retreat</option>
+            </select>
+          </div>
+
+          <div class="scan-row4">
+            <div class="scan-field"><label class="scan-label">MIN LON</label><input class="scan-input" type="number" id="scanMinLon" value="-3.0" step="0.1"></div>
+            <div class="scan-field"><label class="scan-label">MIN LAT</label><input class="scan-input" type="number" id="scanMinLat" value="51.0" step="0.1"></div>
+            <div class="scan-field"><label class="scan-label">MAX LON</label><input class="scan-input" type="number" id="scanMaxLon" value="-2.0" step="0.1"></div>
+            <div class="scan-field"><label class="scan-label">MAX LAT</label><input class="scan-input" type="number" id="scanMaxLat" value="52.0" step="0.1"></div>
+          </div>
+
+          <div class="scan-row2">
+            <div class="scan-field"><label class="scan-label">DATE BEFORE</label><input class="scan-input" type="date" id="scanDateBefore" value="2022-06-01"></div>
+            <div class="scan-field"><label class="scan-label">DATE AFTER</label><input class="scan-input" type="date" id="scanDateAfter" value="2023-06-01"></div>
+          </div>
+
+          <div class="scan-field">
+            <label class="scan-label">SENSOR</label>
+            <select class="scan-select" id="scanSource">
+              <option value="esa_sentinel2">Sentinel-2 MSI L2A · ESA · 10 m</option>
+              <option value="nasa_landsat">Landsat 8/9 OLI-TIRS · NASA · 30 m</option>
+              <option value="nasa_modis">MODIS MOD09A1 · NASA · 500 m</option>
+              <option value="esa_sentinel1">Sentinel-1 SAR GRD · ESA · 10 m</option>
+            </select>
+          </div>
+
+          <div class="scan-row2">
+            <div class="scan-field">
+              <label class="scan-label">MAX CLOUD <span class="text-primary" id="scanCloudVal">20%</span></label>
+              <input type="range" class="scan-range" min="0" max="80" step="5" value="20" id="scanCloud" oninput="document.getElementById('scanCloudVal').textContent=this.value+'%'">
+            </div>
+            <div class="scan-field">
+              <label class="scan-label">SENSITIVITY <span class="text-primary" id="scanSensVal">0.70</span></label>
+              <input type="range" class="scan-range" min="0.1" max="1.0" step="0.05" value="0.70" id="scanSens" oninput="document.getElementById('scanSensVal').textContent=parseFloat(this.value).toFixed(2)">
+            </div>
+          </div>
+
+          <button class="btn btn-primary scan-run-btn" id="scanBtn" onclick="runScan()">
+            <span id="scanBtnLabel"><span aria-hidden="true">▶</span>&nbsp; Initiate scan</span>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="scan-panel" id="scanResultsPanel">
+
+        <div class="scan-empty" id="scanEmpty">
+          <div class="scan-empty-globe" aria-hidden="true">
+            <div class="scan-empty-earth"></div>
+            <div class="scan-empty-ring"></div>
+            <div class="scan-empty-ring r2"></div>
+          </div>
+          <div class="scan-empty-label">AWAITING MISSION PARAMETERS</div>
+          <div class="scan-empty-sub">Configure AOI and press Initiate scan</div>
+        </div>
+
+        <div id="scanOutput" style="display:none;padding:1.5rem;display:none;flex-direction:column;gap:1.25rem">
+
+          <div class="scan-out-head">
+            <span class="dot dot-signal"></span>
+            <span class="scan-rid" id="scanRid">—</span>
+            <span class="scan-complete">● COMPLETE</span>
+            <span class="scan-ms" id="scanMs">—</span>
+          </div>
+
+          <div class="scan-kpis">
+            <div class="scan-kpi"><div class="scan-kpi-lbl">CHANGE AREA</div><div class="scan-kpi-val" id="smChangePct">—</div><div class="scan-kpi-sub">of AOI</div></div>
+            <div class="scan-kpi"><div class="scan-kpi-lbl">Δ NDVI</div><div class="scan-kpi-val" id="smNdvi">—</div><div class="scan-kpi-sub">vegetation</div></div>
+            <div class="scan-kpi"><div class="scan-kpi-lbl">Δ NDWI</div><div class="scan-kpi-val" id="smNdwi">—</div><div class="scan-kpi-sub">water index</div></div>
+          </div>
+
+          <div class="scan-sec-lbl">DETECTED CHANGES</div>
+          <div id="scanChanges" class="scan-changes"></div>
+
+          <div class="scan-ai-box">
+            <div class="scan-ai-lbl"><span class="text-primary">✦</span> AI FIELD REPORT</div>
+            <p class="scan-ai-text" id="scanAiText">—</p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span class="ticker-item"><i class="dot dot-signal"></i>LANDSAT-9 · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SENTINEL-2A · ACQUIRING</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SENTINEL-2B · DOWNLINK 1.4 GB/s</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>MODIS TERRA · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>MODIS AQUA · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>AOI · AMAZON BASIN</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>Δ FOREST COVER · −2.4%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>ALERT · WILDFIRE LAT 34.21° LON −118.43°</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>ICE EXTENT · ARCTIC −0.8%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>URBAN GROWTH · LAGOS +1.2%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SAR PASS · GREENLAND 02:14 UTC</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><i class="dot dot-signal"></i>LANDSAT-9 · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SENTINEL-2A · ACQUIRING</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SENTINEL-2B · DOWNLINK 1.4 GB/s</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>MODIS TERRA · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>MODIS AQUA · NOMINAL</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>AOI · AMAZON BASIN</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>Δ FOREST COVER · −2.4%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>ALERT · WILDFIRE</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>ICE EXTENT · ARCTIC −0.8%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>URBAN GROWTH · LAGOS +1.2%</span>
+    <span class="ticker-item"><i class="dot dot-signal"></i>SAR PASS · GREENLAND 02:14 UTC</span>
+  </div>
+</div>
+
+<!-- DETECT -->
+<section id="detect" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">01 / DETECT</div>
+      <div class="sec-label">TEMPORAL COMPARISON</div>
+      <h2 class="sec-title">Drag the seam to <span class="serif italic">reveal what changed</span>.</h2>
+      <p class="sec-desc">
+        Pixel-level differential analysis between two acquisition windows.
+        Our Siamese network surfaces deforestation, fire scars, urban sprawl
+        and water-body shift with sub-meter spatial confidence — annotated as
+        clean, queryable GeoJSON.
+      </p>
+    </div>
+
+    <div class="detect-grid">
+      <div class="compare" id="compare">
+        <div class="compare-after"></div>
+        <div class="compare-before" id="compareBefore"></div>
+        <div class="compare-handle" id="compareHandle"><div class="compare-knob" aria-hidden="true">⇆</div></div>
+        <input type="range" min="0" max="100" value="50" id="compareSlider" class="compare-range" aria-label="Reveal change between 2019 and 2024"/>
+        <div class="compare-tag tag-tl">2019 · BEFORE</div>
+        <div class="compare-tag tag-tr">2024 · AFTER</div>
+        <div class="compare-coords">PARÁ, BR · −5.41° / −52.87°</div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-row"><span class="metric-label">FOREST LOSS</span><span class="metric-val text-alert">−23.7%</span></div>
+          <div class="bar-track"><div class="bar-fill bg-alert" style="width:76%"></div></div>
+          <div class="metric-foot">NDVI delta · 5-year window</div>
+        </div>
+        <div class="metric">
+          <div class="metric-row"><span class="metric-label">BARE SOIL Δ</span><span class="metric-val text-accent">+18.2%</span></div>
+          <div class="bar-track"><div class="bar-fill bg-accent" style="width:62%"></div></div>
+          <div class="metric-foot">BSI index · post-clearing</div>
+        </div>
+        <div class="metric">
+          <div class="metric-row"><span class="metric-label">WATER INDEX</span><span class="metric-val text-primary">−4.1%</span></div>
+          <div class="bar-track"><div class="bar-fill bg-primary" style="width:28%"></div></div>
+          <div class="metric-foot">NDWI · seasonal corrected</div>
+        </div>
+        <div class="metric">
+          <div class="metric-row"><span class="metric-label">MODEL CONFIDENCE</span><span class="metric-val text-signal">98.6%</span></div>
+          <div class="bar-track"><div class="bar-fill bg-signal" style="width:98%"></div></div>
+          <div class="metric-foot">Siamese-CNN v2.4 · holdout F1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section class="section section-band">
+  <div class="container">
+    <div class="section-head section-head-tight">
+      <div class="sec-label">SIGNALS WE SURFACE</div>
+      <h2 class="sec-title sec-title-sm">Four planetary changes, one feed.</h2>
+    </div>
+    <div class="usecases">
+      <div class="uc">
+        <div class="uc-top"><span class="uc-icon text-alert" aria-hidden="true">◎</span></div>
+        <div class="uc-label">DEFORESTATION</div>
+        <div class="uc-value text-alert">−2.4M ha</div>
+        <div class="uc-year">2024 YTD · tropics</div>
+      </div>
+      <div class="uc">
+        <div class="uc-top"><span class="uc-icon text-accent" aria-hidden="true">⚡</span></div>
+        <div class="uc-label">WILDFIRE SPREAD</div>
+        <div class="uc-value text-accent">1,847</div>
+        <div class="uc-year">Active hotspots now</div>
+      </div>
+      <div class="uc">
+        <div class="uc-top"><span class="uc-icon text-primary" aria-hidden="true">◉</span></div>
+        <div class="uc-label">URBAN GROWTH</div>
+        <div class="uc-value text-primary">+0.8%</div>
+        <div class="uc-year">Per year · global mean</div>
+      </div>
+      <div class="uc">
+        <div class="uc-top"><span class="uc-icon text-signal" aria-hidden="true">≈</span></div>
+        <div class="uc-label">ICE RETREAT</div>
+        <div class="uc-value text-signal">−13%</div>
+        <div class="uc-year">Per decade · Arctic</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">02 / CAPABILITIES</div>
+      <div class="sec-label">PLATFORM</div>
+      <h2 class="sec-title">Engineered for <span class="serif italic">planet-scale</span> inference.</h2>
+      <p class="sec-desc">A composable observability stack — from raw radiance to ranked alerts — built on open standards and battle-tested at terabyte scale.</p>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <div class="feat-num">01</div>
+        <h3 class="feat-title">Multi-sensor fusion</h3>
+        <p class="feat-desc">Harmonised Landsat, Sentinel-1/2 and MODIS into a single temporal cube with cloud-aware compositing.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">02</div>
+        <h3 class="feat-title">Sub-pixel co-registration</h3>
+        <p class="feat-desc">Phase-correlation alignment locks scenes to ±0.3 px so detections aren't fooled by orbital drift.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">03</div>
+        <h3 class="feat-title">Vision Transformer detector</h3>
+        <p class="feat-desc">A Siamese ViT trained on 14M labelled scene-pairs across six biomes and four climate zones.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">04</div>
+        <h3 class="feat-title">Streaming GeoJSON</h3>
+        <p class="feat-desc">Detections push as RFC-7946 features over WebSocket — drop straight into Mapbox, Deck.gl or QGIS.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">05</div>
+        <h3 class="feat-title">Calibrated confidence</h3>
+        <p class="feat-desc">Per-pixel Bayesian uncertainty, not just softmax — so downstream alerts can be ranked by risk.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">06</div>
+        <h3 class="feat-title">Replayable history</h3>
+        <p class="feat-desc">Run any AOI back to 2015 with deterministic outputs and full provenance for audit and ESG reporting.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOURCES -->
+<section id="sources" class="section section-band">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">03 / SOURCES</div>
+      <div class="sec-label">ORBITAL CONSTELLATION</div>
+      <h2 class="sec-title">Fused from the world's <span class="serif italic">best Earth observers</span>.</h2>
+      <p class="sec-desc">Direct ingest from NASA Common Metadata Repository and ESA Copernicus DataSpace via STAC — multiple constellations, one harmonised cube.</p>
+    </div>
+
+    <div class="sources-grid">
+      <article class="src-card brackets">
+        <div class="src-head"><span class="text-primary" aria-hidden="true">🛰</span><span class="src-id">SAT-01</span></div>
+        <div class="src-agency">NASA · USGS</div>
+        <h3 class="src-name text-primary">Landsat 8/9</h3>
+        <dl class="src-dl">
+          <div><dt>Resolution</dt><dd>30 m</dd></div>
+          <div><dt>Spectral</dt><dd>11 bands</dd></div>
+          <div><dt>Revisit</dt><dd>16 d</dd></div>
+        </dl>
+      </article>
+      <article class="src-card brackets">
+        <div class="src-head"><span class="text-accent" aria-hidden="true">🛰</span><span class="src-id">SAT-02</span></div>
+        <div class="src-agency">ESA Copernicus</div>
+        <h3 class="src-name text-accent">Sentinel-2</h3>
+        <dl class="src-dl">
+          <div><dt>Resolution</dt><dd>10 m</dd></div>
+          <div><dt>Spectral</dt><dd>13 bands</dd></div>
+          <div><dt>Revisit</dt><dd>5 d</dd></div>
+        </dl>
+      </article>
+      <article class="src-card brackets">
+        <div class="src-head"><span class="text-signal" aria-hidden="true">🛰</span><span class="src-id">SAT-03</span></div>
+        <div class="src-agency">NASA Terra/Aqua</div>
+        <h3 class="src-name text-signal">MODIS</h3>
+        <dl class="src-dl">
+          <div><dt>Resolution</dt><dd>250 m</dd></div>
+          <div><dt>Spectral</dt><dd>36 bands</dd></div>
+          <div><dt>Revisit</dt><dd>1 d</dd></div>
+        </dl>
+      </article>
+      <article class="src-card brackets">
+        <div class="src-head"><span class="text-primary" aria-hidden="true">🛰</span><span class="src-id">SAT-04</span></div>
+        <div class="src-agency">ESA Copernicus</div>
+        <h3 class="src-name text-primary">Sentinel-1 SAR</h3>
+        <dl class="src-dl">
+          <div><dt>Resolution</dt><dd>5 m</dd></div>
+          <div><dt>Spectral</dt><dd>C-band</dd></div>
+          <div><dt>Revisit</dt><dd>6 d</dd></div>
+        </dl>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section id="pipeline" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">04 / PIPELINE</div>
+      <div class="sec-label">DATA FLOW ARCHITECTURE</div>
+      <h2 class="sec-title">From photon to prediction <span class="serif italic">in seconds</span>.</h2>
+      <p class="sec-desc">Five deterministic stages, fully observable, horizontally scalable.</p>
+    </div>
+    <div class="pipeline">
+      <div class="pipeline-line" aria-hidden="true"></div>
+      <div class="pipe-step"><div class="pipe-circle">🛰<span class="pipe-num">1</span></div><div class="pipe-label">Ingest</div><div class="pipe-desc">STAC API · NASA CMR · Copernicus DataSpace</div></div>
+      <div class="pipe-step"><div class="pipe-circle">▦<span class="pipe-num">2</span></div><div class="pipe-label">Align</div><div class="pipe-desc">Re-projection · cloud mask · co-registration</div></div>
+      <div class="pipe-step"><div class="pipe-circle">⚙<span class="pipe-num">3</span></div><div class="pipe-label">Detect</div><div class="pipe-desc">U-Net · Siamese CNN · Vision Transformer</div></div>
+      <div class="pipe-step"><div class="pipe-circle">∿<span class="pipe-num">4</span></div><div class="pipe-label">Analyze</div><div class="pipe-desc">Δ classification · confidence scoring</div></div>
+      <div class="pipe-step"><div class="pipe-circle">📡<span class="pipe-num">5</span></div><div class="pipe-label">Serve</div><div class="pipe-desc">FastAPI · WebSocket · GeoJSON tiles</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MISSIONS -->
+<section id="missions" class="section section-band">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">05 / MISSIONS</div>
+      <div class="sec-label">FIELD DEPLOYMENTS</div>
+      <h2 class="sec-title"><span class="serif italic">Live signals</span> from active AOIs.</h2>
+      <p class="sec-desc">A snapshot of what Orbital.AI is watching across the globe right now.</p>
+    </div>
+
+    <div class="missions">
+      <article class="mission">
+        <div class="mission-head">
+          <span class="mission-tag tag-alert">ALERT · 04</span>
+          <span class="mission-coords">−3.46° / −62.21°</span>
+        </div>
+        <h3 class="mission-title">Amazon · Pará</h3>
+        <p class="mission-body">New clearing detected across 184 ha of intact primary forest. Sentinel-2 + SAR confluence rules out cloud artefact.</p>
+        <div class="mission-meta">
+          <span>Sensor · S2 + S1</span>
+          <span>Conf · 99.1%</span>
+        </div>
+      </article>
+      <article class="mission">
+        <div class="mission-head">
+          <span class="mission-tag tag-accent">FIRE · ACTIVE</span>
+          <span class="mission-coords">34.21° / −118.43°</span>
+        </div>
+        <h3 class="mission-title">California · LA County</h3>
+        <p class="mission-body">Thermal anomaly + smoke plume across 2,310 ha. MODIS hotspot corroborated by VIIRS overpass at 18:42 UTC.</p>
+        <div class="mission-meta">
+          <span>Sensor · MODIS</span>
+          <span>Conf · 96.4%</span>
+        </div>
+      </article>
+      <article class="mission">
+        <div class="mission-head">
+          <span class="mission-tag tag-primary">URBAN · GROWTH</span>
+          <span class="mission-coords">6.52° / 3.39°</span>
+        </div>
+        <h3 class="mission-title">Lagos · Lekki corridor</h3>
+        <p class="mission-body">Built-up area expanded +1.2% YoY. Impervious-surface index up across coastal reclamation zone.</p>
+        <div class="mission-meta">
+          <span>Sensor · Landsat 9</span>
+          <span>Conf · 94.0%</span>
+        </div>
+      </article>
+      <article class="mission">
+        <div class="mission-head">
+          <span class="mission-tag tag-signal">CRYOSPHERE</span>
+          <span class="mission-coords">71.44° / −51.78°</span>
+        </div>
+        <h3 class="mission-title">Greenland · Ilulissat</h3>
+        <p class="mission-body">Calving front retreated 412 m since last pass. SAR amplitude ratio confirms ice loss, not seasonal melt.</p>
+        <div class="mission-meta">
+          <span>Sensor · S1 SAR</span>
+          <span>Conf · 97.8%</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- API -->
+<section id="api" class="section">
+  <div class="container api-grid">
+    <div>
+      <div class="section-head section-head-left">
+        <div class="sec-index">06 / API</div>
+        <div class="sec-label">FASTAPI BACKEND</div>
+        <h2 class="sec-title">Production-grade endpoints, <span class="serif italic">ready to orbit</span>.</h2>
+        <p class="sec-desc">Async Python · GeoTIFF streaming · WebSocket telemetry · Pydantic schemas · OpenAPI docs out of the box.</p>
+      </div>
+      <div class="endpoints">
+        <div class="ep"><span class="ep-m ep-post">POST</span><span class="ep-p">/aoi</span><span class="ep-d">Define area of interest</span></div>
+        <div class="ep"><span class="ep-m ep-get">GET</span><span class="ep-p">/scenes/{aoi_id}</span><span class="ep-d">List matching scenes</span></div>
+        <div class="ep"><span class="ep-m ep-post">POST</span><span class="ep-p">/detect</span><span class="ep-d">Run change detection</span></div>
+        <div class="ep"><span class="ep-m ep-ws">WS</span><span class="ep-p">/stream/alerts</span><span class="ep-d">Live alert telemetry</span></div>
+        <div class="ep"><span class="ep-m ep-get">GET</span><span class="ep-p">/timeseries/{aoi_id}</span><span class="ep-d">Pixel-level history</span></div>
+      </div>
+    </div>
+
+    <div class="code-card brackets">
+      <div class="code-head">
+        <span class="dot-r" aria-hidden="true"></span><span class="dot-y" aria-hidden="true"></span><span class="dot-g" aria-hidden="true"></span>
+        <span class="code-file">main.py — orbital_ai</span>
+        <span class="code-live">● LIVE</span>
+      </div>
+<pre class="code-block"><code><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, WebSocket
+<span class="kw">from</span> orbital.detect <span class="kw">import</span> SiameseChangeNet
+<span class="kw">from</span> orbital.sources <span class="kw">import</span> STACClient
+
+app = FastAPI(title=<span class="str">"Orbital.AI"</span>)
+model = SiameseChangeNet.load(<span class="str">"v2.4"</span>)
+
+<span class="dec">@app.post(<span class="str">"/detect"</span>)</span>
+<span class="kw">async def</span> detect(aoi: AOI, t0: date, t1: date):
+    scenes = <span class="kw">await</span> STACClient.search(aoi, t0, t1)
+    delta  = <span class="kw">await</span> model.predict(scenes)
+    <span class="kw">return</span> {
+        <span class="str">"confidence"</span>: delta.score,
+        <span class="str">"geojson"</span>:    delta.to_geojson(),
+        <span class="str">"classes"</span>:    delta.classes,
+    }</code></pre>
+      <div class="code-flow" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section class="section section-quote">
+  <div class="container">
+    <figure class="quote">
+      <blockquote class="quote-text">
+        <span class="quote-mark" aria-hidden="true">&ldquo;</span>
+        Orbital.AI cut our deforestation alert latency from
+        <em>weeks</em> to <em>seventeen minutes</em>. It is the
+        <span class="serif italic">single biggest leverage point</span>
+        we've had in field operations this decade.
+      </blockquote>
+      <figcaption class="quote-cite">
+        <div class="quote-name">Dr. Mariana Costa</div>
+        <div class="quote-role">Head of Remote Sensing · Floresta Viva Institute</div>
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="section section-band">
+  <div class="container">
+    <div class="section-head">
+      <div class="sec-index">07 / FAQ</div>
+      <div class="sec-label">ANSWERS</div>
+      <h2 class="sec-title">Everything you'd ask <span class="serif italic">on day one</span>.</h2>
+    </div>
+    <div class="faq">
+      <details class="faq-item" open>
+        <summary>What's the smallest change Orbital.AI can detect?</summary>
+        <p>At Sentinel-2 native 10 m resolution we reliably surface contiguous changes ≥ 0.05 ha (a tennis court). With SAR fusion we push that to 0.02 ha for clearings with strong dielectric contrast.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How quickly are new scenes processed?</summary>
+        <p>Median end-to-end latency from data-take to detection is 17 minutes for Sentinel-2 and 41 minutes for Landsat 9. Alerts are pushed over WebSocket as soon as they clear the confidence threshold.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I bring my own model?</summary>
+        <p>Yes. Any TorchScript or ONNX model with a (T, C, H, W) → (H, W, K) signature drops into the detect stage. The pipeline still handles ingest, alignment, calibration and serving.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What about cloud cover?</summary>
+        <p>Each scene is masked with a CNN-based cloud and shadow detector. SAR data fills optical gaps, and we compute confidence with cloud-fraction priors so noisy windows degrade gracefully instead of failing silently.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Is the data licensable for commercial use?</summary>
+        <p>Landsat, Sentinel and MODIS are all open data. Our derived GeoJSON detections are released under your tenant's chosen licence — including fully proprietary on private deployments.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta" class="section section-cta">
+  <div class="beam-leak" aria-hidden="true"></div>
+  <div class="container cta-inner">
+    <div class="badge"><span class="text-primary">✦ READY FOR DEPLOYMENT ✦</span></div>
+    <h2 class="cta-title">
+      Begin your<br />
+      <span class="serif italic grad-text shimmer">orbital mission</span><span class="text-primary">.</span>
+    </h2>
+    <p class="cta-desc">Spin up an AOI in under sixty seconds. The first 1,000 detections are on us.</p>
+    <div class="hero-cta center">
+      <a href="#" class="btn btn-primary">Request access <span aria-hidden="true">→</span></a>
+      <a href="#" class="btn btn-outline">Read the docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <div class="foot-brand">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(35 12 12)"/></svg>
+        </div>
+        <span class="brand-text">ORBITAL<span class="text-primary">.AI</span></span>
+      </div>
+      <p class="foot-tag">Real-time change detection from low Earth orbit. Built with open data, served with care.</p>
+    </div>
+    <div class="foot-col">
+      <h4>Platform</h4>
+      <a href="#detect">Detect</a>
+      <a href="#sources">Sources</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#api">API</a>
+    </div>
+    <div class="foot-col">
+      <h4>Resources</h4>
+      <a href="#">Documentation</a>
+      <a href="#">Changelog</a>
+      <a href="#">Status page</a>
+      <a href="#">Open data</a>
+    </div>
+    <div class="foot-col">
+      <h4>Company</h4>
+      <a href="#">About</a>
+      <a href="#">Careers</a>
+      <a href="#">Press kit</a>
+      <a href="#">Contact</a>
+    </div>
+  </div>
+  <div class="container footer-inner">
+    <div class="foot-left"><span class="dot dot-signal"></span>ORBITAL.AI · ALL SYSTEMS NOMINAL</div>
+    <div class="foot-right">
+      <span>LAT 0.0000° · LON 0.0000°</span>
+      <span id="utcClock">UTC 00:00:00</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

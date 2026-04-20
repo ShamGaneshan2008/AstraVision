@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Environment
+../.env
+
+# Model weights (large files — use Git LFS or DVC)
+model/weights/*.pkl
+model/weights/*.joblib
+model/weights/*.h5
+model/weights/*.pt
+model/weights/*.onnx
+
+# Data (raw/processed imagery can be large)
+data/raw/
+data/processed/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
