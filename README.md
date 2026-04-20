@@ -139,50 +139,7 @@ Detects deforestation, urban expansion, flooding, wildfires, glacial retreat, an
 
 ## Project structure
 
-```
-orbital-insight-ai/
-├── app/
-│   ├── api/routes.py           # All API endpoints
-│   ├── core/config.py          # Pydantic settings (reads .env)
-│   ├── core/schemas.py         # Request / response models
-│   ├── services/
-│   │   └── detection_service.py  # Full pipeline orchestration
-│   └── main.py                 # FastAPI app + startup
-│
-├── model/
-│   ├── train.py                # Train RandomForest classifier
-│   ├── inference.py            # Standalone inference wrapper
-│   └── weights/                # Saved .pkl files (git-ignored)
-│
-├── utils/
-│   ├── image_processing.py     # NDVI, NDWI, change masks, rasterio I/O
-│   └── visualization.py        # PNG chart generators
-│
-├── data/
-│   ├── raw/                    # Downloaded scenes (git-ignored)
-│   ├── processed/              # Clipped / normalised rasters
-│   └── samples/                # Small test fixtures
-│
-├── notebooks/
-│   └── exploration.ipynb       # End-to-end walkthrough
-│
-├── frontend/
-│   └── index.html              # Dark dashboard (standalone, no build step)
-│
-├── tests/
-│   └── test_api.py             # Pytest suite (18 tests)
-│
-├── scripts/
-│   └── download_data.py        # Search NASA CMR + ESA Dataspace
-│
-├── .env                        # Credentials (never commit)
-├── requirements.txt
-├── run.py                      # Uvicorn launcher
->>>>>>> e46083c (The files are being added)
-└── README.md
-```
 
----
 
 <<<<<<< HEAD
 ## 🚀 Quickstart
